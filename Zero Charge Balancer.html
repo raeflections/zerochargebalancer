@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zero-Charge Balancer - Ionic Compounds</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js for Web Audio synthesis -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Canvas Confetti for completion celebrations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: #f8fafc;
+        }
+
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* See-saw CSS transitions */
+        .seesaw-plank {
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-origin: center center;
+        }
+
+        .tray-container {
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Ion sphere animations */
+        .ion-sphere {
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0) translateY(-20px); opacity: 0; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 9999px;
+        }
+
+        .glow-cation {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+        }
+        
+        .glow-anion {
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.4);
+        }
+
+        .glow-balanced {
+            box-shadow: 0 0 25px rgba(34, 197, 94, 0.6);
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Navigation Header -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-30 px-4 py-3">
+        <div class="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-scale-balanced text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-300 via-purple-200 to-pink-300 bg-clip-text text-transparent">
+                        Zero-Charge Balancer
+                    </h1>
+                    <p class="text-xs text-slate-400 font-medium">Secondary 3 Ionic Compound Simulation Engine</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl px-3 py-1.5 flex items-center space-x-2 text-xs font-semibold">
+                    <span class="text-slate-400">Tier:</span>
+                    <span id="tier-badge" class="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                        Tier 1
+                    </span>
+                </div>
+
+                <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl px-3 py-1.5 flex items-center space-x-2 text-xs font-semibold">
+                    <span class="text-slate-400">Streak:</span>
+                    <span id="streak-counter" class="text-emerald-400 flex items-center gap-1">
+                        <i class="fa-solid fa-fire text-amber-400"></i> <span id="streak-val">0</span> / 2
+                    </span>
+                </div>
+
+                <button id="help-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-circle-question text-indigo-400"></i>
+                    <span>Help / Instructions</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6 flex flex-col justify-between space-y-6">
+
+        <!-- Top Section: Target Compound & Chemical Formula Display -->
+        <section class="bg-slate-900/60 border border-slate-800/90 rounded-2xl p-5 md:p-6 backdrop-blur-sm relative overflow-hidden shadow-xl">
+            <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-indigo-500 to-purple-500"></div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                
+                <!-- Target Compound Info -->
+                <div class="text-center md:text-left space-y-1">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-950/60 border border-indigo-800/50 text-indigo-300 text-xs font-medium">
+                        <i class="fa-solid fa-flask text-indigo-400"></i>
+                        <span id="question-number-tag">Question 1 of 6</span>
+                    </div>
+                    <h2 id="target-compound-name" class="text-2xl md:text-3xl font-extrabold text-white">
+                        Sodium Chloride
+                    </h2>
+                    <p id="target-compound-desc" class="text-xs md:text-sm text-slate-400">
+                        Combine Sodium cations (<span id="target-cation-symbol" class="text-blue-400 font-semibold">Na⁺</span>) and Chloride anions (<span id="target-anion-symbol" class="text-pink-400 font-semibold">Cl⁻</span>) into a neutral formula.
+                    </p>
+                </div>
+
+                <!-- Interactive Chemical Formula Display with Subscript Dropdowns -->
+                <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 md:p-6 flex flex-col items-center shadow-inner min-w-[300px]">
+                    <span class="text-xs uppercase tracking-wider text-slate-400 font-bold mb-2">Step 2: Finalize Formula</span>
+                    
+                    <div class="flex items-center justify-center space-x-2 code-font text-3xl md:text-4xl font-bold py-2">
+                        <!-- Cation Symbol & Subscript Dropdown -->
+                        <div class="flex items-baseline space-x-1 bg-slate-900/90 px-3 py-2 rounded-xl border border-blue-500/30">
+                            <span id="formula-cation-symbol" class="text-blue-400">Na</span>
+                            <div class="relative">
+                                <select id="cation-subscript-select" aria-label="Cation Subscript" class="bg-slate-800 text-blue-300 font-extrabold text-sm md:text-base rounded-lg px-2 py-1 border border-blue-500/50 focus:ring-2 focus:ring-blue-400 focus:outline-none cursor-pointer">
+                                    <option value="1">(blank)</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Anion Symbol & Subscript Dropdown -->
+                        <div class="flex items-baseline space-x-1 bg-slate-900/90 px-3 py-2 rounded-xl border border-pink-500/30">
+                            <span id="formula-anion-symbol" class="text-pink-400">Cl</span>
+                            <div class="relative">
+                                <select id="anion-subscript-select" aria-label="Anion Subscript" class="bg-slate-800 text-pink-300 font-extrabold text-sm md:text-base rounded-lg px-2 py-1 border border-pink-500/50 focus:ring-2 focus:ring-pink-400 focus:outline-none cursor-pointer">
+                                    <option value="1">(blank)</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formula Result Preview -->
+                    <div class="mt-2 text-xs text-slate-400">
+                        Current Selected Formula: <span id="formula-preview-text" class="text-indigo-300 font-bold code-font text-sm">NaCl</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Middle Section: Visual See-Saw Balancer Engine (Collapsible) -->
+        <section id="seesaw-wrapper-section" class="bg-slate-900/80 border border-slate-800 rounded-3xl p-4 md:p-6 relative flex flex-col items-center justify-center shadow-2xl overflow-hidden transition-all duration-300">
+            
+            <!-- Tier 3 Disabled Banner Notice -->
+            <div id="tier3-disabled-notice" class="hidden w-full py-4 px-6 bg-amber-950/40 border border-amber-500/30 rounded-2xl text-center space-y-1">
+                <div class="flex items-center justify-center space-x-2 text-amber-400 font-bold text-sm">
+                    <i class="fa-solid fa-user-astronaut text-lg"></i>
+                    <span>Tier 3: Space Ranger Challenge Mode</span>
+                </div>
+                <p class="text-xs text-slate-400">Visual see-saw aid is disabled! Calculate net neutral charges mentally and select the correct formula subscripts.</p>
+            </div>
+
+            <!-- Collapsible Header Toggle -->
+            <button id="toggle-seesaw-btn" class="w-full flex items-center justify-between px-4 py-3 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-2xl text-slate-200 text-sm font-semibold transition-all group cursor-pointer">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-7 h-7 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-scale-balanced text-sm"></i>
+                    </div>
+                    <span class="text-slate-200 font-bold">See-Saw Balance Visual Aid</span>
+                    <span class="text-xs text-slate-400 font-normal hidden sm:inline">(Optional helper for charge visualization)</span>
+                </div>
+                <div class="flex items-center space-x-2 text-xs text-indigo-300 font-medium">
+                    <span id="seesaw-toggle-label">Click to Expand</span>
+                    <i id="seesaw-toggle-icon" class="fa-solid fa-chevron-down transition-transform duration-300"></i>
+                </div>
+            </button>
+
+            <!-- See-saw Interactive View Container (Hidden by default) -->
+            <div id="seesaw-container" class="hidden w-full flex-col items-center justify-center mt-4 pt-2 border-t border-slate-800/80 min-h-[300px]">
+                
+                <!-- Dynamic Net Charge Status Badge Header -->
+                <div class="z-20 mb-4">
+                    <div id="seesaw-status-badge" class="px-5 py-2 rounded-full border text-sm font-bold flex items-center space-x-2 transition-all duration-300 bg-slate-800/90 text-amber-300 border-amber-500/40 shadow-lg">
+                        <i id="status-icon" class="fa-solid fa-scale-unbalanced text-amber-400"></i>
+                        <span id="status-text">Unbalanced • Net Charge = +1</span>
+                    </div>
+                </div>
+
+                <!-- See-saw Canvas View -->
+                <div class="w-full max-w-3xl relative h-[220px] flex items-center justify-center my-2">
+
+                    <!-- See-saw Beam Structure -->
+                    <div id="seesaw-plank" class="seesaw-plank w-full max-w-2xl h-4 bg-gradient-to-r from-blue-600 via-indigo-500 to-pink-600 rounded-full relative flex items-center justify-between px-2 shadow-2xl">
+                        
+                        <!-- Left Tray Anchor Point (Cations) -->
+                        <div id="cation-tray-anchor" class="absolute -top-32 left-4 md:left-8 w-36 md:w-44 flex flex-col items-center">
+                            <div class="w-1 h-12 bg-slate-500/60 mb-0"></div>
+                            <div id="cation-tray" class="tray-container w-full min-h-[110px] max-h-[140px] bg-blue-950/80 border-2 border-blue-500/60 rounded-2xl p-2 flex flex-wrap content-end justify-center gap-1.5 shadow-xl backdrop-blur-md relative overflow-y-auto">
+                                <span class="absolute top-1 text-[10px] font-bold text-blue-300/60 uppercase tracking-widest pointer-events-none">Cations (+)</span>
+                            </div>
+                            <div class="mt-1 bg-blue-900/90 border border-blue-400/50 text-blue-200 text-xs font-bold px-3 py-0.5 rounded-full shadow-md">
+                                Total: <span id="cation-total-charge">+1</span>
+                            </div>
+                        </div>
+
+                        <!-- Right Tray Anchor Point (Anions) -->
+                        <div id="anion-tray-anchor" class="absolute -top-32 right-4 md:right-8 w-36 md:w-44 flex flex-col items-center">
+                            <div class="w-1 h-12 bg-slate-500/60 mb-0"></div>
+                            <div id="anion-tray" class="tray-container w-full min-h-[110px] max-h-[140px] bg-pink-950/80 border-2 border-pink-500/60 rounded-2xl p-2 flex flex-wrap content-end justify-center gap-1.5 shadow-xl backdrop-blur-md relative overflow-y-auto">
+                                <span class="absolute top-1 text-[10px] font-bold text-pink-300/60 uppercase tracking-widest pointer-events-none">Anions (-)</span>
+                            </div>
+                            <div class="mt-1 bg-pink-900/90 border border-pink-400/50 text-pink-200 text-xs font-bold px-3 py-0.5 rounded-full shadow-md">
+                                Total: <span id="anion-total-charge">-1</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- See-saw Fulcrum -->
+                    <div class="absolute bottom-6 w-0 h-0 border-l-[32px] border-l-transparent border-r-[32px] border-r-transparent border-b-[56px] border-b-slate-700 drop-shadow-xl z-10 flex justify-center">
+                        <div class="absolute top-8 w-4 h-4 bg-indigo-400 rounded-full shadow-inner"></div>
+                    </div>
+                    <div class="absolute bottom-2 w-32 h-4 bg-slate-800 border border-slate-700 rounded-lg"></div>
+
+                </div>
+
+                <!-- Dual Ion Control Panels (Left & Right Trays) -->
+                <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-4 border-t border-slate-800/60">
+                    
+                    <!-- Left Control Panel: Cation Tray -->
+                    <div class="bg-slate-950/80 border border-blue-900/50 rounded-2xl p-4 shadow-lg flex flex-col justify-between space-y-3 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-20 h-20 bg-blue-500/5 rounded-full blur-xl pointer-events-none"></div>
+
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+                                <h3 class="font-bold text-blue-300 text-sm">Left Tray Controller (Cations)</h3>
+                            </div>
+                            <span class="text-[10px] text-slate-400 font-mono uppercase tracking-wider bg-blue-950/60 px-2 py-0.5 rounded border border-blue-800/40">Positive</span>
+                        </div>
+
+                        <!-- Cation Species Selector -->
+                        <div class="space-y-1">
+                            <label for="cation-select" class="text-xs font-medium text-slate-300">Select Cation Species:</label>
+                            <select id="cation-select" class="w-full bg-slate-900 text-blue-200 border border-blue-500/40 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer">
+                                <option value="Na+">Sodium ion (Na⁺)</option>
+                                <option value="Li+">Lithium ion (Li⁺)</option>
+                                <option value="K+">Potassium ion (K⁺)</option>
+                                <option value="Mg2+">Magnesium ion (Mg²⁺)</option>
+                                <option value="Ca2+">Calcium ion (Ca²⁺)</option>
+                                <option value="Be2+">Beryllium ion (Be²⁺)</option>
+                            </select>
+                        </div>
+
+                        <!-- Quantity Toggles -->
+                        <div class="flex items-center gap-2 pt-1">
+                            <button id="btn-remove-cation" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold py-2 px-3 rounded-xl text-xs transition-all flex items-center justify-center space-x-1.5 active:scale-95">
+                                <i class="fa-solid fa-minus text-[10px]"></i>
+                                <span id="label-remove-cation">Remove Na⁺</span>
+                            </button>
+
+                            <button id="btn-add-cation" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-3 rounded-xl text-xs shadow-md shadow-blue-600/30 transition-all flex items-center justify-center space-x-1.5 active:scale-95">
+                                <i class="fa-solid fa-plus text-[10px]"></i>
+                                <span id="label-add-cation">Add Na⁺</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right Control Panel: Anion Tray -->
+                    <div class="bg-slate-950/80 border border-pink-900/50 rounded-2xl p-4 shadow-lg flex flex-col justify-between space-y-3 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-20 h-20 bg-pink-500/5 rounded-full blur-xl pointer-events-none"></div>
+
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></span>
+                                <h3 class="font-bold text-pink-300 text-sm">Right Tray Controller (Anions)</h3>
+                            </div>
+                            <span class="text-[10px] text-slate-400 font-mono uppercase tracking-wider bg-pink-950/60 px-2 py-0.5 rounded border border-pink-800/40">Negative</span>
+                        </div>
+
+                        <!-- Anion Species Selector -->
+                        <div class="space-y-1">
+                            <label for="anion-select" class="text-xs font-medium text-slate-300">Select Anion Species:</label>
+                            <select id="anion-select" class="w-full bg-slate-900 text-pink-200 border border-pink-500/40 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-pink-500/50 cursor-pointer">
+                                <option value="Cl-">Chloride ion (Cl⁻)</option>
+                                <option value="F-">Fluoride ion (F⁻)</option>
+                                <option value="Br-">Bromide ion (Br⁻)</option>
+                                <option value="O2-">Oxide ion (O²⁻)</option>
+                                <option value="S2-">Sulfide ion (S²⁻)</option>
+                            </select>
+                        </div>
+
+                        <!-- Quantity Toggles -->
+                        <div class="flex items-center gap-2 pt-1">
+                            <button id="btn-remove-anion" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold py-2 px-3 rounded-xl text-xs transition-all flex items-center justify-center space-x-1.5 active:scale-95">
+                                <i class="fa-solid fa-minus text-[10px]"></i>
+                                <span id="label-remove-anion">Remove Cl⁻</span>
+                            </button>
+
+                            <button id="btn-add-anion" class="flex-1 bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 px-3 rounded-xl text-xs shadow-md shadow-pink-600/30 transition-all flex items-center justify-center space-x-1.5 active:scale-95">
+                                <i class="fa-solid fa-plus text-[10px]"></i>
+                                <span id="label-add-anion">Add Cl⁻</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- Submit & Validation Action Bar -->
+        <section class="flex flex-col items-center space-y-3 pt-2">
+            
+            <div id="feedback-banner" class="hidden w-full max-w-2xl p-4 rounded-xl border text-sm font-semibold flex items-start space-x-3 transition-all animate-bounce">
+                <i id="feedback-icon" class="fa-solid fa-circle-info text-lg mt-0.5"></i>
+                <div id="feedback-msg" class="flex-1"></div>
+            </div>
+
+            <button id="submit-btn" class="w-full max-w-md bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600 hover:from-emerald-400 hover:to-indigo-500 text-white font-extrabold text-lg py-3.5 px-8 rounded-2xl shadow-xl shadow-emerald-500/20 transform hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center space-x-3">
+                <i class="fa-solid fa-circle-check text-xl"></i>
+                <span>Check Answer & Submit Formula</span>
+            </button>
+        </section>
+
+    </main>
+
+    <!-- INSTRUCTIONS MODAL POPUP -->
+    <div id="instructions-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-xl w-full p-6 md:p-8 shadow-2xl space-y-6 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-pink-500"></div>
+
+            <div class="space-y-2 text-center">
+                <div class="inline-flex p-3 rounded-2xl bg-indigo-500/20 text-indigo-400 mb-1">
+                    <i class="fa-solid fa-scale-balanced text-3xl"></i>
+                </div>
+                <h2 class="text-2xl font-extrabold text-white">Welcome to the Zero-Charge Balancer!</h2>
+                <p class="text-xs text-slate-400">Master ionic bonding by building electrically neutral compounds across 3 difficulty tiers.</p>
+            </div>
+
+            <div class="space-y-4 bg-slate-950/60 p-5 rounded-2xl border border-slate-800 text-sm">
+                <p class="text-slate-300 font-semibold mb-2">Follow these steps to construct neutral ionic compounds:</p>
+
+                <div class="flex items-start space-x-3">
+                    <div class="w-6 h-6 rounded-full bg-indigo-600 text-white flex-shrink-0 flex items-center justify-center font-bold text-xs mt-0.5">1</div>
+                    <p class="text-slate-300">
+                        <strong class="text-indigo-300">Calculate Mentally:</strong> Determine the required cation to anion ratio to produce an overall neutral charge (0).
+                    </p>
+                </div>
+
+                <div class="flex items-start space-x-3">
+                    <div class="w-6 h-6 rounded-full bg-indigo-600 text-white flex-shrink-0 flex items-center justify-center font-bold text-xs mt-0.5">2</div>
+                    <p class="text-slate-300">
+                        <strong class="text-indigo-300">Optional See-Saw Helper (Tiers 1 & 2):</strong> Expand the See-Saw Visual Aid to adjust charges visually until the beam balances flat at net zero charge.
+                    </p>
+                </div>
+
+                <div class="flex items-start space-x-3">
+                    <div class="w-6 h-6 rounded-full bg-indigo-600 text-white flex-shrink-0 flex items-center justify-center font-bold text-xs mt-0.5">3</div>
+                    <p class="text-slate-300">
+                        <strong class="text-indigo-300">Finalize Formula:</strong> Select the matching subscript numbers using the dropdown menus. Choose <strong class="text-indigo-300">(blank)</strong> when only 1 ion is needed, as 1 is omitted in standard formulas.
+                    </p>
+                </div>
+            </div>
+
+            <button id="modal-start-btn" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg shadow-indigo-500/25 transition-all text-base flex items-center justify-center space-x-2">
+                <span>Start Simulation</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- SPACE RANGER COMPLETION CELEBRATION MODAL -->
+    <div id="end-game-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-lg animate-fade-in">
+        <div class="bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 border-2 border-amber-400/60 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl text-center space-y-6 relative overflow-hidden">
+            <div class="absolute -top-12 -right-12 w-40 h-40 bg-amber-500/10 rounded-full blur-2xl"></div>
+            <div class="absolute -bottom-12 -left-12 w-40 h-40 bg-indigo-500/20 rounded-full blur-2xl"></div>
+
+            <div class="relative z-10 flex flex-col items-center space-y-3">
+                <div class="w-20 h-20 rounded-3xl bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-500 flex items-center justify-center shadow-xl shadow-amber-500/30 border-2 border-yellow-200 animate-bounce">
+                    <i class="fa-solid fa-user-astronaut text-4xl text-slate-950"></i>
+                </div>
+
+                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-extrabold uppercase tracking-widest">
+                    <i class="fa-solid fa-star text-amber-400"></i> Mission Accomplished <i class="fa-solid fa-star text-amber-400"></i>
+                </div>
+
+                <h2 class="text-3xl font-extrabold text-white tracking-tight">
+                    Congratulations, Space Ranger!
+                </h2>
+
+                <p class="text-sm text-slate-300 leading-relaxed max-w-md">
+                    You have mastered ionic bonding and balanced neutral chemical formulas across all tiers without relying on visual aids!
+                </p>
+            </div>
+
+            <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 text-xs space-y-2 relative z-10 text-slate-300">
+                <div class="flex justify-between items-center py-1 border-b border-slate-800">
+                    <span class="text-slate-400">Mastery Level:</span>
+                    <span class="font-bold text-amber-300 flex items-center gap-1"><i class="fa-solid fa-crown text-amber-400"></i> Master Space Ranger</span>
+                </div>
+                <div class="flex justify-between items-center py-1 border-b border-slate-800">
+                    <span class="text-slate-400">Zero-Charge Engine:</span>
+                    <span class="font-bold text-emerald-400"><i class="fa-solid fa-circle-check"></i> 100% Proficient</span>
+                </div>
+                <div class="flex justify-between items-center py-1">
+                    <span class="text-slate-400">Streak Requirement:</span>
+                    <span class="font-bold text-indigo-300">2/2 Tier 3 Mastery Questions</span>
+                </div>
+            </div>
+
+            <button id="restart-game-btn" class="w-full bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-extrabold py-4 px-6 rounded-2xl shadow-xl shadow-amber-500/25 transition-all text-base flex items-center justify-center space-x-2 cursor-pointer active:scale-95 relative z-10">
+                <i class="fa-solid fa-rotate-right text-lg"></i>
+                <span>Restart Journey (Tier 1)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT SIMULATION ENGINE -->
+    <script>
+        
+        // Ion Database with Charge values and Superscript Formats
+        const IONS = {
+            "Na+": { name: "Sodium", symbol: "Na", charge: 1, type: "cation", formatted: "Na⁺" },
+            "Li+": { name: "Lithium", symbol: "Li", charge: 1, type: "cation", formatted: "Li⁺" },
+            "K+":  { name: "Potassium", symbol: "K", charge: 1, type: "cation", formatted: "K⁺" },
+            "Mg2+": { name: "Magnesium", symbol: "Mg", charge: 2, type: "cation", formatted: "Mg²⁺" },
+            "Ca2+": { name: "Calcium", symbol: "Ca", charge: 2, type: "cation", formatted: "Ca²⁺" },
+            "Be2+": { name: "Beryllium", symbol: "Be", charge: 2, type: "cation", formatted: "Be²⁺" },
+
+            "F-":  { name: "Fluoride", symbol: "F", charge: -1, type: "anion", formatted: "F⁻" },
+            "Cl-": { name: "Chloride", symbol: "Cl", charge: -1, type: "anion", formatted: "Cl⁻" },
+            "Br-": { name: "Bromide", symbol: "Br", charge: -1, type: "anion", formatted: "Br⁻" },
+            "O2-": { name: "Oxide", symbol: "O", charge: -2, type: "anion", formatted: "O²⁻" },
+            "S2-": { name: "Sulfide", symbol: "S", charge: -2, type: "anion", formatted: "S²⁻" }
+        };
+
+        const QUESTION_BANKS = {
+            tier1: [
+                { name: "Sodium Chloride", cation: "Na+", anion: "Cl-", reqCation: 1, reqAnion: 1 },
+                { name: "Lithium Fluoride", cation: "Li+", anion: "F-", reqCation: 1, reqAnion: 1 },
+                { name: "Magnesium Oxide", cation: "Mg2+", anion: "O2-", reqCation: 1, reqAnion: 1 },
+                { name: "Calcium Oxide", cation: "Ca2+", anion: "O2-", reqCation: 1, reqAnion: 1 },
+                { name: "Potassium Bromide", cation: "K+", anion: "Br-", reqCation: 1, reqAnion: 1 },
+                { name: "Beryllium Oxide", cation: "Be2+", anion: "O2-", reqCation: 1, reqAnion: 1 }
+            ],
+            tier2: [
+                { name: "Magnesium Chloride", cation: "Mg2+", anion: "Cl-", reqCation: 1, reqAnion: 2 },
+                { name: "Sodium Sulfide", cation: "Na+", anion: "S2-", reqCation: 2, reqAnion: 1 },
+                { name: "Lithium Oxide", cation: "Li+", anion: "O2-", reqCation: 2, reqAnion: 1 },
+                { name: "Sodium Oxide", cation: "Na+", anion: "O2-", reqCation: 2, reqAnion: 1 },
+                { name: "Calcium Fluoride", cation: "Ca2+", anion: "F-", reqCation: 1, reqAnion: 2 },
+                { name: "Calcium Bromide", cation: "Ca2+", anion: "Br-", reqCation: 1, reqAnion: 2 }
+            ],
+            tier3: [
+                { name: "Magnesium Fluoride", cation: "Mg2+", anion: "F-", reqCation: 1, reqAnion: 2 },
+                { name: "Potassium Oxide", cation: "K+", anion: "O2-", reqCation: 2, reqAnion: 1 },
+                { name: "Calcium Chloride", cation: "Ca2+", anion: "Cl-", reqCation: 1, reqAnion: 2 },
+                { name: "Lithium Sulfide", cation: "Li+", anion: "S2-", reqCation: 2, reqAnion: 1 },
+                { name: "Beryllium Fluoride", cation: "Be2+", anion: "F-", reqCation: 1, reqAnion: 2 },
+                { name: "Potassium Sulfide", cation: "K+", anion: "S2-", reqCation: 2, reqAnion: 1 }
+            ]
+        };
+
+        const state = {
+            currentTier: 1,
+            questionIndex: 0,
+            consecutiveCorrectInTier: 0,
+            
+            cationCount: 1,
+            anionCount: 1,
+            
+            currentCationKey: "Na+",
+            currentAnionKey: "Cl-",
+            
+            cationSubscript: 1,
+            anionSubscript: 1
+        };
+
+        const elements = {
+            instructionsModal: document.getElementById('instructions-modal'),
+            endGameModal: document.getElementById('end-game-modal'),
+            restartGameBtn: document.getElementById('restart-game-btn'),
+            modalStartBtn: document.getElementById('modal-start-btn'),
+            helpBtn: document.getElementById('help-btn'),
+            tierBadge: document.getElementById('tier-badge'),
+            streakVal: document.getElementById('streak-val'),
+            questionTag: document.getElementById('question-number-tag'),
+            
+            targetName: document.getElementById('target-compound-name'),
+            targetDesc: document.getElementById('target-compound-desc'),
+            targetCationSymbol: document.getElementById('target-cation-symbol'),
+            targetAnionSymbol: document.getElementById('target-anion-symbol'),
+            
+            formulaCationSymbol: document.getElementById('formula-cation-symbol'),
+            formulaAnionSymbol: document.getElementById('formula-anion-symbol'),
+            cationSubscriptSelect: document.getElementById('cation-subscript-select'),
+            anionSubscriptSelect: document.getElementById('anion-subscript-select'),
+            formulaPreviewText: document.getElementById('formula-preview-text'),
+            
+            toggleSeesawBtn: document.getElementById('toggle-seesaw-btn'),
+            tier3DisabledNotice: document.getElementById('tier3-disabled-notice'),
+            seesawContainer: document.getElementById('seesaw-container'),
+            seesawToggleLabel: document.getElementById('seesaw-toggle-label'),
+            seesawToggleIcon: document.getElementById('seesaw-toggle-icon'),
+            
+            seesawStatusBadge: document.getElementById('seesaw-status-badge'),
+            statusIcon: document.getElementById('status-icon'),
+            statusText: document.getElementById('status-text'),
+            seesawPlank: document.getElementById('seesaw-plank'),
+            
+            cationTray: document.getElementById('cation-tray'),
+            anionTray: document.getElementById('anion-tray'),
+            cationTrayAnchor: document.getElementById('cation-tray-anchor'),
+            anionTrayAnchor: document.getElementById('anion-tray-anchor'),
+            cationTotalCharge: document.getElementById('cation-total-charge'),
+            anionTotalCharge: document.getElementById('anion-total-charge'),
+            
+            cationSelect: document.getElementById('cation-select'),
+            anionSelect: document.getElementById('anion-select'),
+            btnAddCation: document.getElementById('btn-add-cation'),
+            btnRemoveCation: document.getElementById('btn-remove-cation'),
+            labelAddCation: document.getElementById('label-add-cation'),
+            labelRemoveCation: document.getElementById('label-remove-cation'),
+            
+            btnAddAnion: document.getElementById('btn-add-anion'),
+            btnRemoveAnion: document.getElementById('btn-remove-anion'),
+            labelAddAnion: document.getElementById('label-add-anion'),
+            labelRemoveAnion: document.getElementById('label-remove-anion'),
+            
+            feedbackBanner: document.getElementById('feedback-banner'),
+            feedbackIcon: document.getElementById('feedback-icon'),
+            feedbackMsg: document.getElementById('feedback-msg'),
+            submitBtn: document.getElementById('submit-btn')
+        };
+
+        // Sound Effects
+        const soundEngine = {
+            synth: null,
+            init() {
+                try {
+                    this.synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                    this.synth.volume.value = -12;
+                } catch(e) {}
+            },
+            playAdd() {
+                if (!this.synth) this.init();
+                try { this.synth.triggerAttackRelease(["C4", "E4"], "16n"); } catch(e){}
+            },
+            playRemove() {
+                if (!this.synth) this.init();
+                try { this.synth.triggerAttackRelease(["E4", "C4"], "16n"); } catch(e){}
+            },
+            playBalance() {
+                if (!this.synth) this.init();
+                try { this.synth.triggerAttackRelease(["G4", "C5", "E5"], "8n"); } catch(e){}
+            },
+            playSuccess() {
+                if (!this.synth) this.init();
+                try {
+                    const now = Tone.now();
+                    this.synth.triggerAttackRelease("C5", "8n", now);
+                    this.synth.triggerAttackRelease("E5", "8n", now + 0.1);
+                    this.synth.triggerAttackRelease("G5", "8n", now + 0.2);
+                    this.synth.triggerAttackRelease("C6", "4n", now + 0.3);
+                } catch(e){}
+            },
+            playError() {
+                if (!this.synth) this.init();
+                try {
+                    const now = Tone.now();
+                    this.synth.triggerAttackRelease("F3", "8n", now);
+                    this.synth.triggerAttackRelease("C3", "4n", now + 0.1);
+                } catch(e){}
+            }
+        };
+
+        function getCurrentTarget() {
+            const bankKey = `tier${state.currentTier}`;
+            return QUESTION_BANKS[bankKey][state.questionIndex];
+        }
+
+        // Subscript 1 is formatted as empty string (blank) in chemical formulas
+        function formatSubscriptString(cationSym, cationSub, anionSym, anionSub) {
+            const subMap = { '1': '', '2': '₂', '3': '₃', '4': '₄', '5': '₅' };
+            const cSub = subMap[cationSub] || '';
+            const aSub = subMap[anionSub] || '';
+            return `${cationSym}${cSub}${anionSym}${aSub}`;
+        }
+
+        // Helper to construct exact total charge calculation breakdown for Tier 3 feedback
+        function getChargeCalculationString(cIon, catSub, aIon, aniSub) {
+            const catChargeMag = Math.abs(cIon.charge);
+            const catTotal = catChargeMag * catSub;
+            const catChargeStr = `${catChargeMag}+`;
+            const catTotalStr = `${catTotal}+`;
+
+            const aniChargeMag = Math.abs(aIon.charge);
+            const aniTotal = aniChargeMag * aniSub;
+            const aniChargeStr = `${aniChargeMag}-`;
+            const aniTotalStr = `${aniTotal}-`;
+
+            return `Total cation charge (${cIon.formatted}) = ${catChargeStr} x ${catSub} = ${catTotalStr} vs Total anion charge (${aIon.formatted}) = ${aniChargeStr} x ${aniSub} = ${aniTotalStr}`;
+        }
+
+        function updateSeesawPhysics() {
+            const cationIon = IONS[state.currentCationKey];
+            const anionIon = IONS[state.currentAnionKey];
+
+            const totalPositive = state.cationCount * cationIon.charge;
+            const totalNegative = state.anionCount * Math.abs(anionIon.charge);
+            const netCharge = totalPositive - totalNegative;
+
+            elements.cationTotalCharge.textContent = `+${totalPositive}`;
+            elements.anionTotalCharge.textContent = `-${totalNegative}`;
+
+            const maxTilt = 18;
+            let tiltAngle = 0;
+
+            if (netCharge > 0) {
+                tiltAngle = -Math.min(maxTilt, 5 + netCharge * 4);
+            } else if (netCharge < 0) {
+                tiltAngle = Math.min(maxTilt, 5 + Math.abs(netCharge) * 4);
+            } else {
+                tiltAngle = 0;
+            }
+
+            elements.seesawPlank.style.transform = `rotate(${tiltAngle}deg)`;
+            const counterRotate = -tiltAngle;
+            elements.cationTrayAnchor.style.transform = `rotate(${counterRotate}deg)`;
+            elements.anionTrayAnchor.style.transform = `rotate(${counterRotate}deg)`;
+
+            if (netCharge === 0) {
+                elements.seesawStatusBadge.className = "px-5 py-2 rounded-full border text-sm font-bold flex items-center space-x-2 transition-all duration-300 bg-emerald-950/90 text-emerald-300 border-emerald-500/50 glow-balanced";
+                elements.statusIcon.className = "fa-solid fa-circle-check text-emerald-400";
+                elements.statusText.textContent = "✨ Zero Net Charge (0) — Balanced!";
+                soundEngine.playBalance();
+            } else if (netCharge > 0) {
+                elements.seesawStatusBadge.className = "px-5 py-2 rounded-full border text-sm font-bold flex items-center space-x-2 transition-all duration-300 bg-blue-950/90 text-blue-300 border-blue-500/40 glow-cation";
+                elements.statusIcon.className = "fa-solid fa-scale-unbalanced-flip text-blue-400";
+                elements.statusText.textContent = `Positive Heavy • Net Charge = +${netCharge}`;
+            } else {
+                elements.seesawStatusBadge.className = "px-5 py-2 rounded-full border text-sm font-bold flex items-center space-x-2 transition-all duration-300 bg-pink-950/90 text-pink-300 border-pink-500/40 glow-anion";
+                elements.statusIcon.className = "fa-solid fa-scale-unbalanced text-pink-400";
+                elements.statusText.textContent = `Negative Heavy • Net Charge = ${netCharge}`;
+            }
+
+            renderIonSpheres();
+        }
+
+        function renderIonSpheres() {
+            const cationIon = IONS[state.currentCationKey];
+            const anionIon = IONS[state.currentAnionKey];
+
+            elements.cationTray.innerHTML = `
+                <span class="absolute top-1 text-[10px] font-bold text-blue-300/60 uppercase tracking-widest pointer-events-none">Cations (+)</span>
+            `;
+            for (let i = 0; i < state.cationCount; i++) {
+                const ionEl = document.createElement('div');
+                ionEl.className = "ion-sphere w-10 h-10 md:w-11 md:h-11 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-400 text-white font-extrabold text-xs md:text-sm flex items-center justify-center border-2 border-blue-200/50 shadow-md z-10";
+                ionEl.textContent = cationIon.formatted;
+                elements.cationTray.appendChild(ionEl);
+            }
+
+            elements.anionTray.innerHTML = `
+                <span class="absolute top-1 text-[10px] font-bold text-pink-300/60 uppercase tracking-widest pointer-events-none">Anions (-)</span>
+            `;
+            for (let i = 0; i < state.anionCount; i++) {
+                const ionEl = document.createElement('div');
+                ionEl.className = "ion-sphere w-10 h-10 md:w-11 md:h-11 rounded-full bg-gradient-to-tr from-pink-600 to-rose-400 text-white font-extrabold text-xs md:text-sm flex items-center justify-center border-2 border-pink-200/50 shadow-md z-10";
+                ionEl.textContent = anionIon.formatted;
+                elements.anionTray.appendChild(ionEl);
+            }
+        }
+
+        function updateControlPanelLabels() {
+            const cation = IONS[state.currentCationKey];
+            const anion = IONS[state.currentAnionKey];
+
+            elements.labelAddCation.textContent = `Add ${cation.formatted}`;
+            elements.labelRemoveCation.textContent = `Remove ${cation.formatted}`;
+
+            elements.labelAddAnion.textContent = `Add ${anion.formatted}`;
+            elements.labelRemoveAnion.textContent = `Remove ${anion.formatted}`;
+
+            elements.formulaCationSymbol.textContent = cation.symbol;
+            elements.formulaAnionSymbol.textContent = anion.symbol;
+
+            updateFormulaPreviewText();
+        }
+
+        function updateFormulaPreviewText() {
+            const cation = IONS[state.currentCationKey];
+            const anion = IONS[state.currentAnionKey];
+            
+            const catSub = elements.cationSubscriptSelect.value;
+            const aniSub = elements.anionSubscriptSelect.value;
+
+            state.cationSubscript = parseInt(catSub);
+            state.anionSubscript = parseInt(aniSub);
+
+            elements.formulaPreviewText.textContent = formatSubscriptString(cation.symbol, catSub, anion.symbol, aniSub);
+        }
+
+        function showFeedback(message, type = 'error') {
+            elements.feedbackBanner.classList.remove('hidden', 'bg-red-950/80', 'border-red-500/50', 'text-red-300', 'bg-emerald-950/80', 'border-emerald-500/50', 'text-emerald-300');
+            if (type === 'error') {
+                elements.feedbackBanner.classList.add('bg-red-950/80', 'border-red-500/50', 'text-red-300');
+                elements.feedbackIcon.className = 'fa-solid fa-triangle-exclamation text-xl text-red-400 mt-0.5';
+            } else {
+                elements.feedbackBanner.classList.add('bg-emerald-950/80', 'border-emerald-500/50', 'text-emerald-300');
+                elements.feedbackIcon.className = 'fa-solid fa-circle-check text-xl text-emerald-400 mt-0.5';
+            }
+            elements.feedbackMsg.textContent = message;
+        }
+
+        function hideFeedback() {
+            if (elements.feedbackBanner) {
+                elements.feedbackBanner.classList.add('hidden');
+            }
+        }
+
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 50,
+                    spread: 60,
+                    origin: { y: 0.7 }
+                });
+            }
+        }
+
+        function loadCurrentQuestion() {
+            const target = getCurrentTarget();
+            
+            state.currentCationKey = target.cation;
+            state.currentAnionKey = target.anion;
+            
+            state.cationCount = 1;
+            state.anionCount = 1;
+
+            elements.cationSelect.value = target.cation;
+            elements.anionSelect.value = target.anion;
+
+            elements.cationSubscriptSelect.value = "1";
+            elements.anionSubscriptSelect.value = "1";
+
+            const bankKey = `tier${state.currentTier}`;
+            const totalInBank = QUESTION_BANKS[bankKey].length;
+            elements.questionTag.textContent = `Question ${state.questionIndex + 1} of ${totalInBank}`;
+            elements.targetName.textContent = target.name;
+
+            const cIon = IONS[target.cation];
+            const aIon = IONS[target.anion];
+
+            elements.targetCationSymbol.textContent = cIon.formatted;
+            elements.targetAnionSymbol.textContent = aIon.formatted;
+
+            elements.targetDesc.innerHTML = `Combine <strong>${cIon.name}</strong> cations (<span class="text-blue-400 font-semibold">${cIon.formatted}</span>) and <strong>${aIon.name}</strong> anions (<span class="text-pink-400 font-semibold">${aIon.formatted}</span>) into a neutral formula.`;
+
+            // Tier specific setup
+            if (state.currentTier === 1) {
+                elements.tierBadge.textContent = "Tier 1";
+                elements.toggleSeesawBtn.classList.remove('hidden');
+                elements.tier3DisabledNotice.classList.add('hidden');
+            } else if (state.currentTier === 2) {
+                elements.tierBadge.textContent = "Tier 2";
+                elements.toggleSeesawBtn.classList.remove('hidden');
+                elements.tier3DisabledNotice.classList.add('hidden');
+            } else if (state.currentTier === 3) {
+                elements.tierBadge.textContent = "Tier 3";
+                elements.toggleSeesawBtn.classList.add('hidden');
+                elements.tier3DisabledNotice.classList.remove('hidden');
+                // Ensure seesaw is hidden in Tier 3
+                elements.seesawContainer.classList.add('hidden');
+                elements.seesawContainer.classList.remove('flex');
+            }
+
+            elements.streakVal.textContent = state.consecutiveCorrectInTier;
+
+            hideFeedback();
+            updateControlPanelLabels();
+            updateSeesawPhysics();
+        }
+
+        function triggerSpaceRangerConfetti() {
+            if (typeof confetti === 'function') {
+                const duration = 3 * 1000;
+                const animationEnd = Date.now() + duration;
+
+                const frame = () => {
+                    confetti({
+                        particleCount: 5,
+                        angle: 60,
+                        spread: 55,
+                        origin: { x: 0 },
+                        colors: ['#f59e0b', '#3b82f6', '#ec4899', '#10b981']
+                    });
+                    confetti({
+                        particleCount: 5,
+                        angle: 120,
+                        spread: 55,
+                        origin: { x: 1 },
+                        colors: ['#f59e0b', '#3b82f6', '#ec4899', '#10b981']
+                    });
+
+                    if (Date.now() < animationEnd) {
+                        requestAnimationFrame(frame);
+                    }
+                };
+                frame();
+            }
+        }
+
+        function showEndGameModal() {
+            elements.endGameModal.classList.remove('hidden');
+            triggerSpaceRangerConfetti();
+        }
+
+        function validateAnswer() {
+            const target = getCurrentTarget();
+            const cIon = IONS[state.currentCationKey];
+            const aIon = IONS[state.currentAnionKey];
+
+            // 1. Species Match Check
+            if (state.currentCationKey !== target.cation || state.currentAnionKey !== target.anion) {
+                soundEngine.playError();
+                state.consecutiveCorrectInTier = 0;
+                elements.streakVal.textContent = state.consecutiveCorrectInTier;
+                showFeedback(`Species mismatch! Target compound is ${target.name}. Please select ${IONS[target.cation].formatted} and ${IONS[target.anion].formatted}.`, 'error');
+                return;
+            }
+
+            const catSub = state.cationSubscript;
+            const aniSub = state.anionSubscript;
+
+            const totalPos = catSub * cIon.charge;
+            const totalNeg = aniSub * Math.abs(aIon.charge);
+            const netCharge = totalPos - totalNeg;
+
+            // 2. Net Charge Neutrality Check
+            if (netCharge !== 0) {
+                soundEngine.playError();
+                state.consecutiveCorrectInTier = 0;
+                elements.streakVal.textContent = state.consecutiveCorrectInTier;
+
+                if (state.currentTier === 3) {
+                    const calcStr = getChargeCalculationString(cIon, catSub, aIon, aniSub);
+                    showFeedback(`Formula is not balanced! ${calcStr}. Adjust subscripts until charges neutralize.`, 'error');
+                } else {
+                    showFeedback(`The charges are not balanced yet! Total Cation (+${totalPos}) vs Total Anion (-${totalNeg}). Net Charge = ${netCharge > 0 ? '+' : ''}${netCharge}. Adjust ion counts until net charge is 0.`, 'error');
+                }
+                return;
+            }
+
+            // 3. Formula Ratio Simplification Check
+            if (catSub !== target.reqCation || aniSub !== target.reqAnion) {
+                soundEngine.playError();
+                state.consecutiveCorrectInTier = 0;
+                elements.streakVal.textContent = state.consecutiveCorrectInTier;
+                showFeedback(`Your formula is balanced, but not in the simplest whole-number ratio! Please simplify your subscripts.`, 'error');
+                return;
+            }
+
+            // 4. Correct Answer Handling
+            soundEngine.playSuccess();
+            triggerConfetti();
+
+            state.consecutiveCorrectInTier++;
+            elements.streakVal.textContent = state.consecutiveCorrectInTier;
+
+            let successMsg = `Correct! ${target.name} (${formatSubscriptString(cIon.symbol, catSub.toString(), aIon.symbol, aniSub.toString())}) is electrically neutral.`;
+            if (state.currentTier === 3) {
+                successMsg += ` [${getChargeCalculationString(cIon, catSub, aIon, aniSub)}]`;
+            }
+
+            showFeedback(successMsg, 'success');
+
+            // Tier Progression Logic
+            setTimeout(() => {
+                if (state.consecutiveCorrectInTier >= 2) {
+                    if (state.currentTier === 1) {
+                        state.currentTier = 2;
+                        state.questionIndex = 0;
+                        state.consecutiveCorrectInTier = 0;
+                        loadCurrentQuestion();
+                        showFeedback("🎉 Great job! Moving on to Tier 2!", "success");
+                    } else if (state.currentTier === 2) {
+                        state.currentTier = 3;
+                        state.questionIndex = 0;
+                        state.consecutiveCorrectInTier = 0;
+                        loadCurrentQuestion();
+                        showFeedback("🚀 Space Ranger Challenge Mode! Welcome to Tier 3 (No See-Saw Visual Aid)!", "success");
+                    } else if (state.currentTier === 3) {
+                        showEndGameModal();
+                    }
+                } else {
+                    state.questionIndex = (state.questionIndex + 1) % QUESTION_BANKS[`tier${state.currentTier}`].length;
+                    loadCurrentQuestion();
+                    showFeedback("Great job! Answer 1 more question correctly in a row to advance!", "success");
+                }
+            }, 1800);
+        }
+
+        function setupEventListeners() {
+            // Modal Toggle Controls
+            if (elements.modalStartBtn) {
+                elements.modalStartBtn.addEventListener('click', () => {
+                    elements.instructionsModal.classList.add('hidden');
+                });
+            }
+
+            if (elements.helpBtn) {
+                elements.helpBtn.addEventListener('click', () => {
+                    elements.instructionsModal.classList.remove('hidden');
+                });
+            }
+
+            if (elements.restartGameBtn) {
+                elements.restartGameBtn.addEventListener('click', () => {
+                    elements.endGameModal.classList.add('hidden');
+                    state.currentTier = 1;
+                    state.questionIndex = 0;
+                    state.consecutiveCorrectInTier = 0;
+                    loadCurrentQuestion();
+                });
+            }
+
+            // See-saw Collapsible Toggle Button
+            if (elements.toggleSeesawBtn) {
+                elements.toggleSeesawBtn.addEventListener('click', () => {
+                    const isHidden = elements.seesawContainer.classList.contains('hidden');
+                    if (isHidden) {
+                        elements.seesawContainer.classList.remove('hidden');
+                        elements.seesawContainer.classList.add('flex');
+                        elements.seesawToggleLabel.textContent = 'Click to Collapse';
+                        elements.seesawToggleIcon.className = 'fa-solid fa-chevron-up transition-transform duration-300';
+                    } else {
+                        elements.seesawContainer.classList.add('hidden');
+                        elements.seesawContainer.classList.remove('flex');
+                        elements.seesawToggleLabel.textContent = 'Click to Expand';
+                        elements.seesawToggleIcon.className = 'fa-solid fa-chevron-down transition-transform duration-300';
+                    }
+                });
+            }
+
+            // Ion Species Selectors
+            if (elements.cationSelect) {
+                elements.cationSelect.addEventListener('change', (e) => {
+                    state.currentCationKey = e.target.value;
+                    state.cationCount = 1;
+                    elements.cationSubscriptSelect.value = "1";
+                    updateControlPanelLabels();
+                    updateSeesawPhysics();
+                });
+            }
+
+            if (elements.anionSelect) {
+                elements.anionSelect.addEventListener('change', (e) => {
+                    state.currentAnionKey = e.target.value;
+                    state.anionCount = 1;
+                    elements.anionSubscriptSelect.value = "1";
+                    updateControlPanelLabels();
+                    updateSeesawPhysics();
+                });
+            }
+
+            // Cation Quantity Toggles
+            if (elements.btnAddCation) {
+                elements.btnAddCation.addEventListener('click', () => {
+                    if (state.cationCount < 5) {
+                        state.cationCount++;
+                        elements.cationSubscriptSelect.value = state.cationCount.toString();
+                        updateFormulaPreviewText();
+                        updateSeesawPhysics();
+                        soundEngine.playAdd();
+                    }
+                });
+            }
+
+            if (elements.btnRemoveCation) {
+                elements.btnRemoveCation.addEventListener('click', () => {
+                    if (state.cationCount > 1) {
+                        state.cationCount--;
+                        elements.cationSubscriptSelect.value = state.cationCount.toString();
+                        updateFormulaPreviewText();
+                        updateSeesawPhysics();
+                        soundEngine.playRemove();
+                    }
+                });
+            }
+
+            // Anion Quantity Toggles
+            if (elements.btnAddAnion) {
+                elements.btnAddAnion.addEventListener('click', () => {
+                    if (state.anionCount < 5) {
+                        state.anionCount++;
+                        elements.anionSubscriptSelect.value = state.anionCount.toString();
+                        updateFormulaPreviewText();
+                        updateSeesawPhysics();
+                        soundEngine.playAdd();
+                    }
+                });
+            }
+
+            if (elements.btnRemoveAnion) {
+                elements.btnRemoveAnion.addEventListener('click', () => {
+                    if (state.anionCount > 1) {
+                        state.anionCount--;
+                        elements.anionSubscriptSelect.value = state.anionCount.toString();
+                        updateFormulaPreviewText();
+                        updateSeesawPhysics();
+                        soundEngine.playRemove();
+                    }
+                });
+            }
+
+            // Chemical Formula Subscript Dropdowns
+            if (elements.cationSubscriptSelect) {
+                elements.cationSubscriptSelect.addEventListener('change', (e) => {
+                    const val = parseInt(e.target.value, 10);
+                    state.cationSubscript = val;
+                    state.cationCount = val;
+                    updateFormulaPreviewText();
+                    updateSeesawPhysics();
+                });
+            }
+
+            if (elements.anionSubscriptSelect) {
+                elements.anionSubscriptSelect.addEventListener('change', (e) => {
+                    const val = parseInt(e.target.value, 10);
+                    state.anionSubscript = val;
+                    state.anionCount = val;
+                    updateFormulaPreviewText();
+                    updateSeesawPhysics();
+                });
+            }
+
+            // Submit Answer Button
+            if (elements.submitBtn) {
+                elements.submitBtn.addEventListener('click', () => {
+                    validateAnswer();
+                });
+            }
+        }
+
+        // Initialize Simulation Engine on Window Load
+        window.onload = function() {
+            setupEventListeners();
+            loadCurrentQuestion();
+        };
+    </script>
+</body>
+</html>
